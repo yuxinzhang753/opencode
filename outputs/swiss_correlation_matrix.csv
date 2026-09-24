@@ -1,0 +1,7 @@
+"","Fertility","Agriculture","Examination","Education","Catholic","Infant.Mortality"
+"Fertility",1,0.3531,-0.6459,-0.6638,0.4637,0.4166
+"Agriculture",0.3531,1,-0.6865,-0.6395,0.4011,-0.0609
+"Examination",-0.6459,-0.6865,1,0.6984,-0.5727,-0.114
+"Education",-0.6638,-0.6395,0.6984,1,-0.1539,-0.0993
+"Catholic",0.4637,0.4011,-0.5727,-0.1539,1,0.1755
+"Infant.Mortality",0.4166,-0.0609,-0.114,-0.0993,0.1755,1
