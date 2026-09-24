@@ -1,0 +1,175 @@
+---
+title: "Swiss Fertility: A Correlation Analysis"
+subtitle: "Associations among socio-economic indicators in Swiss districts"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: flatly
+    code-fold: true
+    df-print: paged
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# Packages (install only if missing)
+needed <- c("readr", "dplyr", "tidyr", "ggplot2", "knitr")
+missing <- needed[!vapply(needed, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing) > 0) install.packages(missing)
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+```
+
+## Introduction
+
+The classic Swiss fertility data describe 47 French-speaking districts of
+Switzerland around 1888. Each district is characterised by six quantitative
+measures: fertility, the proportion of males in agriculture, the results of a
+military examination, education, the percentage of Catholics, and infant
+mortality.
+
+This document loads the data directly from a remote CSV, computes the Pearson
+correlation matrix among the numeric variables, and displays it as an
+annotated heatmap.
+
+## Load the data
+
+The dataset is read straight from GitHub — no local copy is required.
+
+```{r}
+#| label: load-data
+
+data_url <- "https://raw.githubusercontent.com/Marshall-Soc/css_bootcamp/main/data/swiss.csv"
+
+swiss <- read_csv(data_url, show_col_types = FALSE)
+
+# The first column holds district names but arrives with an empty header.
+names(swiss)[1] <- "District"
+
+glimpse(swiss)
+```
+
+```{r}
+#| label: preview
+kable(head(swiss, 8), digits = 2, caption = "First six districts of the Swiss data.")
+```
+
+## Correlation matrix
+
+We correlate every numeric column with every other. The leading `District`
+column is dropped first so that only quantitative variables enter the matrix.
+
+```{r}
+#| label: corr-matrix
+
+swiss_num <- swiss %>%
+  select(where(is.numeric))
+
+corr_mat <- cor(swiss_num, use = "complete.obs")
+round(corr_mat, 2) %>%
+  kable(caption = "Pearson correlation matrix (rounded to 2 decimals).")
+```
+
+### Strongest associations
+
+```{r}
+#| label: extremes
+
+# Rank off-diagonal pairs by absolute correlation
+pairs <- as.data.frame(as.table(corr_mat)) %>%
+  filter(Var1 != Var2) %>%
+  mutate(abs_r = abs(Freq)) %>%
+  arrange(desc(abs_r)) %>%
+  slice_head(n = 5)
+
+kable(
+  pairs,
+  col.names = c("Variable 1", "Variable 2", "r", "|r|"),
+  digits = 3,
+  row.names = FALSE,
+  caption = "Five strongest off-diagonal correlations."
+)
+```
+
+## Annotated correlation heatmap
+
+Each cell is coloured by the correlation coefficient and labelled with its
+value, so the plot can be read without consulting a separate legend of numbers.
+
+```{r}
+#| label: heatmap
+#| fig-width: 8
+#| fig-height: 7
+#| fig-align: center
+
+# Preserve the matrix's variable ordering on both axes
+var_levels <- colnames(corr_mat)
+
+corr_df <- as.data.frame(corr_mat) %>%
+  mutate(Variable1 = factor(rownames(corr_mat), levels = var_levels)) %>%
+  pivot_longer(
+    cols = -Variable1,
+    names_to = "Variable2",
+    values_to = "r"
+  ) %>%
+  mutate(Variable2 = factor(Variable2, levels = var_levels))
+
+ggplot(corr_df, aes(x = Variable2, y = Variable1, fill = r)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = sprintf("%.2f", r)), size = 4.2, family = "mono") +
+  scale_fill_gradient2(
+    low    = "#2166AC",
+    mid    = "white",
+    high   = "#B2182B",
+    midpoint = 0,
+    limits = c(-1, 1),
+    name   = "Pearson r"
+  ) +
+  coord_fixed() +
+  labs(
+    title    = "Correlation heatmap of Swiss district indicators",
+    subtitle = "Blue = negative association, red = positive association",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x  = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y  = element_text(face = "bold"),
+    panel.grid   = element_blank(),
+    plot.title   = element_text(face = "bold")
+  )
+```
+
+## Interpretation
+
+* **Fertility and education** are strongly negatively correlated: districts
+  with more schooling tended to have lower fertility.
+* **Fertility and Catholic** show a clear positive association, while
+  **agriculture** is negatively related to education and examination results.
+* **Infant mortality** is largely disconnected from the socio-economic
+  indicators: its correlations with agriculture, examination, and education are
+  all within $\pm 0.11$ of zero. Its one notable association is a moderate
+  positive link with fertility ($r = 0.42$).
+
+Correlation does not imply causation, and these are district-level (ecological)
+quantities, so the coefficients should be read as descriptive summaries of
+association rather than as causal effects.
+
+## Session information
+
+```{r}
+#| label: session
+sessionInfo()
+```
