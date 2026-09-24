@@ -1,0 +1,7 @@
+# Broken script — kept locally only
+opencode.R
+
+# R session artifacts
+.Rhistory
+.RData
+.Rproj.user/
